@@ -32,6 +32,7 @@
 - [Events](#events)
 - [Custom Transports](#custom-transports)
     - [Additional Symfony Transports](#additional-symfony-transports)
+    - [Mailtrap Email Sending](#mailtrap-email-sending)
 
 <a name="introduction"></a>
 ## Introduction
@@ -44,6 +45,8 @@ Sending email doesn't have to be complicated. Laravel provides a clean, simple e
 Laravel's email services may be configured via your application's `config/mail.php` configuration file. Each mailer configured within this file may have its own unique configuration and even its own unique "transport", allowing your application to use different email services to send certain email messages. For example, your application might use Postmark to send transactional emails while using Amazon SES to send bulk emails.
 
 Within your `mail` configuration file, you will find a `mailers` configuration array. This array contains a sample configuration entry for each of the major mail drivers / transports supported by Laravel, while the `default` configuration value determines which mailer will be used by default when your application needs to send an email message.
+
+For [Mailtrap Email Sending](#mailtrap-email-sending), configure the Mailtrap PHP package for the Email API or use Laravel's `smtp` transport.
 
 <a name="driver-prerequisites"></a>
 ### Driver / Transport Prerequisites
@@ -1648,3 +1651,68 @@ Once your transport has been registered, you may create a mailer definition with
     // ...
 ],
 ```
+
+<a name="mailtrap-email-sending"></a>
+### Mailtrap Email Sending
+
+[Mailtrap Email Sending](https://mailtrap.io/email-api/) delivers production emails through its Email API or SMTP. Mailtrap maintains the PHP package that supplies the API transport. SMTP uses Laravel's existing `smtp` transport.
+
+Before you configure either method, [set up a sending domain](https://docs.mailtrap.io/email-api-smtp/setup/sending-domain) in Mailtrap. Make sure that Mailtrap shows the domain as Verified. Select the Transactional Stream for your domain in [Sending Setup](https://mailtrap.io/api-smtp/sending-setup).
+
+<a name="mailtrap-email-api"></a>
+#### Email API
+
+To use the Email API, install the [Mailtrap PHP package](https://github.com/mailtrap/mailtrap-php) and its dependencies with Composer:
+
+```shell
+composer require railsware/mailtrap-php symfony/http-client nyholm/psr7 symfony/mailer
+```
+
+The package registers its service provider through Laravel's package discovery. Add the following entry to the `mailers` array in your application's `config/mail.php` file:
+
+```php
+'mailtrap-sdk' => [
+    'transport' => 'mailtrap-sdk',
+],
+```
+
+Set the following variables in your application's `.env` file:
+
+```ini
+MAIL_MAILER=mailtrap-sdk
+MAILTRAP_HOST=send.api.mailtrap.io
+MAILTRAP_API_KEY=your-api-token
+MAIL_FROM_ADDRESS=sender@example.com
+MAIL_FROM_NAME="${APP_NAME}"
+```
+
+Replace `your-api-token` with the API token for your sending domain. Replace `sender@example.com` with an address on your verified domain.
+
+<a name="mailtrap-smtp"></a>
+#### SMTP
+
+To use [Mailtrap SMTP](https://docs.mailtrap.io/email-api-smtp/setup/smtp-integration), select SMTP in Sending Setup. Copy the credentials into your application's `.env` file:
+
+```ini
+MAIL_MAILER=smtp
+MAIL_SCHEME=smtp
+MAIL_HOST=live.smtp.mailtrap.io
+MAIL_PORT=587
+MAIL_USERNAME=api
+MAIL_PASSWORD=your-api-token
+MAIL_FROM_ADDRESS=sender@example.com
+MAIL_FROM_NAME="${APP_NAME}"
+```
+
+Replace `your-api-token` with the SMTP password from Sending Setup. Replace `sender@example.com` with an address on your verified domain. This method uses the existing `smtp` mailer in `config/mail.php`.
+
+<a name="sending-with-mailtrap"></a>
+#### Sending Messages
+
+After you configure either method, clear Laravel's configuration cache:
+
+```shell
+php artisan config:clear
+```
+
+Send your existing mailables through the `Mail` facade as described in [Sending Mail](#sending-mail). Mailtrap Email Sending delivers these messages to their recipients. Use [Mailtrap Email Sandbox](https://mailtrap.io/email-sandbox/) to capture test emails for inspection.
